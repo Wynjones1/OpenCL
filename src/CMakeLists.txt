@@ -1,8 +1,7 @@
-cmake_minimum_required(VERSION 2.8.8)
+cmake_minimum_required(VERSION 3.0)
 project(out)
 
 find_package(OpenCL REQUIRED)
-
 
 set(INCLUDE_DIR ${CMAKE_BINARY_DIR}/include)
 make_directory(${INCLUDE_DIR})
