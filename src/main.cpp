@@ -4,6 +4,8 @@
 #include <iostream>
 #include "config.h"
 #include "support.h"
+#include "glm/glm.hpp"
+#include "glm/gtc/type_ptr.hpp"
 
 int main()
 {
@@ -20,11 +22,11 @@ int main()
 	setup(&context, &platform_id, &device_id, &cq);
 
 	/* Create Kernel Program from the source */
-	program = create_program_from_file(context, KERNEL_PATH "/pass_through.cl");
+	program = create_program_from_file(context, KERNEL_PATH "/glm_test0.cl");
 	/* Build Kernel Program */
 	build_program(program, 1, &device_id, NULL, NULL, NULL);
 	/* Create OpenCL Kernel */
-	kernels.push_back(clCreateKernel(program, "pass_through", &ret));
+	kernels.push_back(clCreateKernel(program, "glm_input", &ret));
 
 #if 0
 	int a, b;
@@ -32,10 +34,47 @@ int main()
 	clSetKernelArg(kernels[0], 0, sizeof(int), (void*)&a);
 	clSetKernelArg(kernels[0], 0, sizeof(int), (void*)&b);
 #else
-	int a = 154;
-	mem_objs.push_back(clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(a), &a, &ret));
-	mem_objs.push_back(clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(a), NULL, &ret));
+	glm::vec4 input[4];
+	glm::vec4 output[4];
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			input[i][j] = static_cast<float>(i * 4 + j);
+		}
+	}
+	mem_objs.push_back(clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(input), input, &ret));
+	mem_objs.push_back(clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(output), NULL, &ret));
 
+	clSetKernelArg(kernels[0], 0, sizeof(mem_objs[0]), &mem_objs[0]);
+	clSetKernelArg(kernels[0], 1, sizeof(mem_objs[1]), &mem_objs[1]);
+
+	size_t t = 4;
+	size_t global_size[] = { t, t };
+	size_t local_size[]  = { t, t };
+	clEnqueueNDRangeKernel(cq, kernels[0], 2, NULL, global_size, local_size, 0, NULL, NULL);
+
+	clEnqueueReadBuffer(cq, mem_objs[1], CL_TRUE, 0, sizeof(output), output, 0, NULL, NULL);
+
+	for (int i = 0; i < 4; i++)
+	{
+		std::cout
+			<< input[i][0] << ","
+			<< input[i][1] << ","
+			<< input[i][2] << ","
+			<< input[i][3] << std::endl;
+	}
+	std::cout << std::endl;
+	for (int i = 0; i < 4; i++)
+	{
+			std::cout
+				<< output[i][0] << ","
+				<< output[i][1] << ","
+				<< output[i][2] << ","
+				<< output[i][3] << std::endl;
+	}
+
+#if 0
 	clSetKernelArg(kernels[0], 0, sizeof(mem_objs[0]), &mem_objs[0]);
 	clSetKernelArg(kernels[0], 1, sizeof(mem_objs[1]), &mem_objs[1]);
 
@@ -54,6 +93,7 @@ int main()
 		std::cout << "Value of b = " << *b << std::endl;
 		clEnqueueUnmapMemObject(cq, mem_objs[1], b, 0, NULL, NULL);
 	}
+#endif
 #endif
 
 	/* Finalization */
